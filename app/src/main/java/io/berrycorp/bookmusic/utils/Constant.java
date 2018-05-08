@@ -5,8 +5,11 @@ public class Constant {
     public final static Integer BOOK_SINGER_ACTIVITY = 2;
     public final static Integer PLAY_ACTIVITY = 3;
 
-    public final static String API = "https://bookmusicapi.000webhostapp.com/public/";
-    public final static String API_ALL_SONG = "https://bookmusicapi.000webhostapp.com/public/api/song";
-    public final static String API_BOOK_SINGER = "https://bookmusicapi.000webhostapp.com/public/api/book-singer";
-    public final static String API_ALL_SINGER = "https://bookmusicapi.000webhostapp.com/public/api/singer";
+    public final static String url = "https://bookmusicapi.000webhostapp.com/public/";
+    //public final static String url = "http://192.168.1.53:8000/";
+
+    public final static String API = url;
+    public final static String API_ALL_SONG = url + "api/song";
+    public final static String API_BOOK_SINGER = url + "api/book-singer";
+    public final static String API_ALL_SINGER = url + "api/singer";
 }

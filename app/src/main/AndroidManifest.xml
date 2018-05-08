@@ -3,6 +3,7 @@
     package="io.berrycorp.bookmusic">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
         android:allowBackup="true"
@@ -20,7 +21,7 @@
         </activity>
         <activity android:name=".BookSingerActivity" />
         <activity android:name=".PlayActivity"/>
-        <service android:name=".services.MusicService"/>
+        <service android:name=".services.MusicService" />
     </application>
 
 </manifest>

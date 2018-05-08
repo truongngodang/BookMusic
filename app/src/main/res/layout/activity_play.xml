@@ -98,7 +98,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="3"
                 android:fontFamily="@font/open_sans"
-                android:text="0:12"
+                android:text="00:00"
                 android:textAlignment="center"
                 android:textSize="13sp" />
 
@@ -114,7 +114,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="3"
                 android:fontFamily="@font/open_sans"
-                android:text="3:34"
+                android:text="00:00"
                 android:textAlignment="center"
                 android:textSize="13sp" />
         </LinearLayout>

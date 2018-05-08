@@ -1,16 +1,15 @@
 package io.berrycorp.bookmusic;
 
-import android.annotation.SuppressLint;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.net.Uri;
-import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.view.KeyEvent;
+import android.os.Handler;
+import android.os.IBinder;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -18,38 +17,17 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
-import com.github.ybq.android.spinkit.style.ChasingDots;
-import com.github.ybq.android.spinkit.style.CubeGrid;
-import com.github.ybq.android.spinkit.style.DoubleBounce;
 import com.github.ybq.android.spinkit.style.ThreeBounce;
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
-import com.google.android.exoplayer2.extractor.ExtractorsFactory;
-import com.google.android.exoplayer2.source.ExtractorMediaSource;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelection;
-import com.google.android.exoplayer2.trackselection.TrackSelector;
-import com.google.android.exoplayer2.upstream.BandwidthMeter;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.util.Util;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,63 +39,68 @@ import io.berrycorp.bookmusic.adapter.SongAdapter;
 import io.berrycorp.bookmusic.connect.RQSingleton;
 import io.berrycorp.bookmusic.models.Singer;
 import io.berrycorp.bookmusic.models.Song;
-import io.berrycorp.bookmusic.utils.FetchDataHelper;
+import io.berrycorp.bookmusic.services.MusicService;
 
-import static io.berrycorp.bookmusic.utils.Constant.API;
-import static io.berrycorp.bookmusic.utils.Constant.API_ALL_SONG;
+import static io.berrycorp.bookmusic.services.MusicService.STATE_IS_LOADING;
+import static io.berrycorp.bookmusic.services.MusicService.STATE_IS_UNLOADING;
+import static io.berrycorp.bookmusic.services.MusicService.STATE_SEEK_PROCESS;
 import static io.berrycorp.bookmusic.utils.Constant.API_BOOK_SINGER;
 
 public class PlayActivity extends AppCompatActivity {
 
     // Controls
-    ListView lvSong;
-    SongAdapter adapter;
-    TextView tvName, tvTime, tvTimeCurrent, tvSinger;
-    ImageButton btnPlay, btnPrev, btnNext;
-    SeekBar sbSong;
-    ProgressBar pbLoad;
+    private ListView lvSong;
+    private SongAdapter adapter;
+    private TextView tvName, tvTime, tvTimeCurrent, tvSinger;
+    private ImageButton btnPlay, btnPrev, btnNext;
+    private SeekBar sbSong;
+    private ProgressBar pbLoad;
 
     // Data
-    Integer size;
-    ArrayList<Singer> singers;
-    String activityOld;
-    ArrayList<Song> songs = new ArrayList<>();
+    private Integer size;
+    private ArrayList<Singer> singers;
+    private String activityOld;
+    private ArrayList<Song> songs = new ArrayList<>();
 
-    // Exo Player
-    private SimpleExoPlayer exoPlayer;
-    private BandwidthMeter bandwidthMeter;
-    private ExtractorsFactory extractorsFactory;
-    private TrackSelection.Factory trackSelectionFactory;
-    private TrackSelector trackSelector;
-    private DefaultBandwidthMeter defaultBandwidthMeter;
-    private DataSource.Factory dataSourceFactory;
-    private MediaSource mediaSource;
+    boolean binded = false;
+    private MusicService musicService;
 
-    // variable state
-    int position = 0;
-    int iDetectClick = 0;
+    final SimpleDateFormat dateFormat = new SimpleDateFormat("mm:ss");
 
-    // Create handler for UI Player
-    Handler handlerTime = new Handler();
-    Runnable updateTimeRunnable = new Runnable() {
-        @SuppressLint("SimpleDateFormat")
+
+    // Handler Update UI
+    private final Handler handler = new Handler();
+
+    private final Runnable uiCurrentPositionRunnable = new Runnable() {
         @Override
         public void run() {
-            tvTimeCurrent.setText(new SimpleDateFormat("mm:ss").format(exoPlayer.getCurrentPosition()));
-            sbSong.setProgress((int) exoPlayer.getCurrentPosition());
-            handlerTime.postDelayed(this, 1000);
+            tvTimeCurrent.setText(dateFormat.format(musicService.getCurrentPosition()));
+            sbSong.setProgress(musicService.getCurrentPosition());
+            handler.postDelayed(this, 1000);
         }
     };
-    Handler handlerButtonPlay = new Handler();
-    Runnable updateButtonPlay = new Runnable() {
+    private final Runnable uiDurationRunnable = new Runnable() {
         @Override
         public void run() {
-            if (exoPlayer.getPlayWhenReady()) {
-                btnPlay.setImageResource(R.drawable.ic_pause);
-            } else  {
-                btnPlay.setImageResource(R.drawable.ic_play);
-            }
-            handlerButtonPlay.postDelayed(this, 500);
+            tvTime.setText(dateFormat.format(musicService.getDuration()));
+            handler.postDelayed(this, 1000);
+            sbSong.setMax(musicService.getDuration());
+        }
+    };
+
+
+
+    ServiceConnection musicServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            MusicService.MusicBinder binder = (MusicService.MusicBinder) iBinder;
+            musicService = binder.getService();
+            binded = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            binded = false;
         }
     };
 
@@ -129,22 +112,30 @@ public class PlayActivity extends AppCompatActivity {
         addControls();
         addEvents();
 
-        // Init ExoPlayer
-        initExoPlayer();
         // Init List Song to ListView and play first song
         initPlaylist();
+        updateByState();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        exoPlayer.setPlayWhenReady(false);
-        exoPlayer.release();
+        if (binded) {
+            this.unbindService(musicServiceConnection);
+            binded = false;
+        }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        Intent intent = new Intent(PlayActivity.this, MusicService.class);
+        bindService(intent, musicServiceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
     }
 
     private void addControls() {
@@ -169,76 +160,9 @@ public class PlayActivity extends AppCompatActivity {
         pbLoad.setIndeterminateDrawable(threeBounce);
         pbLoad.setVisibility(View.VISIBLE);
 
-        // Set Adapter
+        // Set Adapter List song
         adapter = new SongAdapter(PlayActivity.this, R.layout.row_item_song, songs);
         lvSong.setAdapter(adapter);
-    }
-
-    private void initExoPlayer() {
-        bandwidthMeter = new DefaultBandwidthMeter();
-        extractorsFactory = new DefaultExtractorsFactory();
-
-        trackSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
-
-        trackSelector = new DefaultTrackSelector(trackSelectionFactory);
-
-        defaultBandwidthMeter = new DefaultBandwidthMeter();
-        dataSourceFactory = new DefaultDataSourceFactory(this,
-                Util.getUserAgent(this, "BookMusic"), defaultBandwidthMeter);
-
-        exoPlayer = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
-        updateStateButtonPlay();
-        updateTimeSong();
-
-
-        exoPlayer.addListener(new Player.DefaultEventListener() {
-
-            @Override
-            public void onPlayerError(ExoPlaybackException error) {
-                exoPlayer.setPlayWhenReady(false);
-                Toast.makeText(PlayActivity.this, error.toString(), Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
-                if (!playWhenReady || playbackState == Player.STATE_BUFFERING) {
-                    pbLoad.setVisibility(View.VISIBLE);
-                }
-                switch (playbackState) {
-                    case Player.STATE_ENDED: {
-                        position++;
-                        if (position > songs.size() - 1) {
-                            position = 0;
-                        }
-                        playSong(songs.get(position));
-                        break;
-                    }
-                    case Player.STATE_BUFFERING: {
-                    }
-                    case Player.STATE_READY: {
-                        sbSong.setMax((int) exoPlayer.getDuration());
-                        setTimeTotal();
-                        pbLoad.setVisibility(View.INVISIBLE);
-                    }
-                }
-            }
-
-            @Override
-            public void onLoadingChanged(boolean isLoading) {
-                super.onLoadingChanged(isLoading);
-                if (isLoading) {
-                    pbLoad.setVisibility(View.VISIBLE);
-                } else {
-                    pbLoad.setVisibility(View.INVISIBLE);
-                }
-            }
-
-            @Override
-            public void onSeekProcessed() {
-                pbLoad.setVisibility(View.VISIBLE);
-                super.onSeekProcessed();
-            }
-        });
     }
 
     private void addEvents() {
@@ -246,20 +170,18 @@ public class PlayActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 sbSong.setMax(0);
-                position = i;
-                playSong(songs.get(position));
+                updateSongUI(musicService.playSong(i));
             }
         });
 
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (exoPlayer.getPlayWhenReady()) {
-                    exoPlayer.setPlayWhenReady(false);
+                if (musicService.togglePlay()) {
+                    btnPlay.setImageResource(R.drawable.ic_pause);
                 } else {
-                    exoPlayer.setPlayWhenReady(true);
+                    btnPlay.setImageResource(R.drawable.ic_play);
                 }
-
             }
         });
 
@@ -267,95 +189,37 @@ public class PlayActivity extends AppCompatActivity {
         btnNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                sbSong.setMax(0);
-                position++;
-                if (position > songs.size() - 1) {
-                    position = 0;
-                }
-
-                if (exoPlayer.getPlayWhenReady()) {
-                    playSong(songs.get(position));
-                } else {
-                    tvName.setText(songs.get(position).getName());
-                    playSong(songs.get(position));
-                    exoPlayer.setPlayWhenReady(false);
-                }
+                updateSongUI(musicService.nextSong());
             }
         });
 
         btnPrev.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                iDetectClick++;
-                Handler mHandler = new Handler();
-                Runnable runnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        iDetectClick = 0;
-                    }
-                };
-                if (iDetectClick == 1) {
-                    sbSong.setMax(0);
-                    exoPlayer.seekTo(0);
-                    mHandler.postDelayed(runnable, 400);
-                } else if (iDetectClick == 2)  {
-                    sbSong.setMax(0);
-                    position--;
-                    if (position < 0) {
-                        position = songs.size() - 1;
-                    }
-
-                    if (exoPlayer.getPlayWhenReady()) {
-                        playSong(songs.get(position));
-                    } else {
-                        tvName.setText(songs.get(position).getName());
-                        playSong(songs.get(position));
-                        exoPlayer.setPlayWhenReady(false);
-                    }
-                }
+                updateSongUI(musicService.prevSong());
             }
         });
 
         sbSong.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-                @SuppressLint("SimpleDateFormat") SimpleDateFormat dateFormat = new SimpleDateFormat("mm:ss");
                 tvTimeCurrent.setText(dateFormat.format(i));
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-                handlerTime.removeCallbacks(updateTimeRunnable);
+                handler.removeCallbacks(uiCurrentPositionRunnable);
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                exoPlayer.seekTo(sbSong.getProgress());
-                updateTimeSong();
+                musicService.seekTo(sbSong.getProgress());
+                updateCurrentPosition();
             }
         });
     }
 
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
-            exoPlayer.setPlayWhenReady(false);
-        } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
-            exoPlayer.setPlayWhenReady(true);
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    // Play and Auto next song
-    private void playSong(Song song) {
-        setInfoSong(song);
-        mediaSource = new ExtractorMediaSource(Uri.parse(API + song.getUrl()), dataSourceFactory, extractorsFactory, null, null);
-        exoPlayer.prepare(mediaSource);
-        exoPlayer.setPlayWhenReady(true);
-    }
-
-    private void setInfoSong(Song song) {
+    private void updateSongUI(Song song) {
         StringBuilder builder = new StringBuilder();
         ArrayList<Singer> mSingers = song.getSinger();
         for (int i = 0; i< mSingers.size(); i++) {
@@ -367,39 +231,70 @@ public class PlayActivity extends AppCompatActivity {
         }
         tvName.setText(song.getName());
         tvSinger.setText(builder.toString());
+        updateDuration();
+        updateCurrentPosition();
     }
 
-    // setTime total for text view and seekBar
-    private void setTimeTotal() {
-        @SuppressLint("SimpleDateFormat") SimpleDateFormat dateFormat = new SimpleDateFormat("mm:ss");
-        sbSong.refreshDrawableState();
-        tvTime.setText(dateFormat.format(exoPlayer.getDuration()));
-        sbSong.setMax((int) exoPlayer.getDuration());
+    private void updateDuration() {
+        handler.postDelayed(uiDurationRunnable, 1000);
     }
 
-    // Update Time song countdown
-    private void updateTimeSong() {
-        handlerTime.removeCallbacks(updateTimeRunnable);
-        handlerTime.postDelayed(updateTimeRunnable, 100);
+    private void updateCurrentPosition() {
+        handler.postDelayed(uiCurrentPositionRunnable, 1000);
     }
 
-    // Update state Button Play Pause <-> Play
-    private void updateStateButtonPlay() {
-        handlerButtonPlay.removeCallbacks(updateButtonPlay);
-        handlerButtonPlay.postDelayed(updateButtonPlay, 500);
+    private void updateByState() {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (musicService != null) {
+                    switch (musicService.getPlaybackState()) {
+                        case Player.STATE_ENDED : {
+                            updateSongUI(musicService.nextSong());
+                            break;
+                        }
+                        case Player.STATE_BUFFERING : {
+                            pbLoad.setVisibility(View.VISIBLE);
+                            break;
+                        }
+                        case Player.STATE_READY : {
+                            pbLoad.setVisibility(View.INVISIBLE);
+                            break;
+                        }
+                        case STATE_SEEK_PROCESS : {
+                            pbLoad.setVisibility(View.VISIBLE);
+                            break;
+                        }
+                        case STATE_IS_LOADING : {
+                            pbLoad.setVisibility(View.VISIBLE);
+                            break;
+                        }
+                        case STATE_IS_UNLOADING : {
+                            pbLoad.setVisibility(View.INVISIBLE);
+                            handler.removeCallbacks(uiDurationRunnable);
+                            break;
+                        }
+                    }
+                } else {
+                    pbLoad.setVisibility(View.INVISIBLE);
+                }
+                handler.post(this);
+            }
+        });
     }
+
 
     // Init Playlist on ListView
     private void initPlaylist() {
         if (activityOld.equals("BookSingerActivity")) {
-            fetchBookBySingers();
+            fetchSongs();
         } else {
             Toast.makeText(this, activityOld, Toast.LENGTH_SHORT).show();
         }
     }
 
     // FetchData
-    private void fetchBookBySingers() {
+    private void fetchSongs() {
         adapter.clear();
         StringRequest stringRequest = new StringRequest(
                 Request.Method.POST,
@@ -418,14 +313,10 @@ public class PlayActivity extends AppCompatActivity {
                             e.printStackTrace();
                             Toast.makeText(PlayActivity.this, e.toString(), Toast.LENGTH_SHORT).show();
                         }
-                        try {
-                            Song songFirst = songs.get(0);
-                            playSong(songFirst);
-                        } catch (Exception e) {
-                            tvName.setText("No Song");
-                            e.printStackTrace();
-                        }
-
+                        Intent intent = new Intent(PlayActivity.this, MusicService.class);
+                        intent.putExtra("SONGS", songs);
+                        startService(intent);
+                        updateSongUI(songs.get(0));
                     }
                 },
                 new Response.ErrorListener() {
@@ -446,6 +337,7 @@ public class PlayActivity extends AppCompatActivity {
                 return params;
             }
         };
+
         RQSingleton.getInstance(PlayActivity.this).addToRequestQueue(stringRequest);
     }
 

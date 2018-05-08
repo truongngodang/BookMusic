@@ -13,6 +13,8 @@ public class Song implements Serializable, Parcelable {
     private String url;
     private Integer id;
 
+    private int duration;
+
     public Song() {
     }
 
@@ -21,6 +23,14 @@ public class Song implements Serializable, Parcelable {
         this.singer = singer;
         this.kind = kind;
         this.url = url;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
     }
 
     public Integer getId() {
