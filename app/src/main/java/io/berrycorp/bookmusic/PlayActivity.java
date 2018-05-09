@@ -17,34 +17,22 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
 import com.github.ybq.android.spinkit.style.ThreeBounce;
 import com.google.android.exoplayer2.Player;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import io.berrycorp.bookmusic.adapter.SongAdapter;
-import io.berrycorp.bookmusic.connect.RQSingleton;
 import io.berrycorp.bookmusic.models.Singer;
 import io.berrycorp.bookmusic.models.Song;
 import io.berrycorp.bookmusic.services.MusicService;
+import io.berrycorp.bookmusic.viewmodels.SongViewModel;
 
 import static io.berrycorp.bookmusic.services.MusicService.STATE_IS_LOADING;
 import static io.berrycorp.bookmusic.services.MusicService.STATE_IS_UNLOADING;
 import static io.berrycorp.bookmusic.services.MusicService.STATE_SEEK_PROCESS;
-import static io.berrycorp.bookmusic.utils.Constant.API_BOOK_SINGER;
 
 public class PlayActivity extends AppCompatActivity {
 
@@ -58,38 +46,84 @@ public class PlayActivity extends AppCompatActivity {
 
     // Data
     private Integer size;
-    private ArrayList<Singer> singers;
+    private ArrayList<Singer> mSingers;
     private String activityOld;
-    private ArrayList<Song> songs = new ArrayList<>();
+    private ArrayList<Song> mSongs = new ArrayList<>();
 
     boolean binded = false;
     private MusicService musicService;
 
     final SimpleDateFormat dateFormat = new SimpleDateFormat("mm:ss");
 
+    private int position;
 
     // Handler Update UI
     private final Handler handler = new Handler();
 
-    private final Runnable uiCurrentPositionRunnable = new Runnable() {
+    private final Runnable uiRefreshRunnable = new Runnable() {
         @Override
         public void run() {
-            tvTimeCurrent.setText(dateFormat.format(musicService.getCurrentPosition()));
-            sbSong.setProgress(musicService.getCurrentPosition());
-            handler.postDelayed(this, 1000);
+        sbSong.setProgress(musicService.getCurrentPosition());
+        sbSong.setMax(musicService.getDuration());
+        tvTime.setText(dateFormat.format(musicService.getDuration()));
+        if (musicService.isPlaying())
+            btnPlay.setImageResource(R.drawable.ic_pause);
+        else
+            btnPlay.setImageResource(R.drawable.ic_play);
+        if (musicService.getSongPlaying() != null) {
+            StringBuilder builder = new StringBuilder();
+            ArrayList<Singer> mSingers = musicService.getSongPlaying().getSinger();
+            for (int i = 0; i< mSingers.size(); i++) {
+                if (i == mSingers.size() - 1) {
+                    builder.append(mSingers.get(i).getName());
+                } else {
+                    builder.append(mSingers.get(i).getName()).append(", ");
+                }
+            }
+            tvName.setText(musicService.getSongPlaying().getName());
+            tvSinger.setText(builder.toString());
+        }
+
+        if (musicService != null) {
+            switch (musicService.getPlaybackState()) {
+                case Player.STATE_ENDED : {
+                    position++;
+                    if (position > mSongs.size() - 1) {
+                        position = 0;
+                    }
+                    bindSongToService(mSongs.get(position));
+                    break;
+                }
+                case Player.STATE_BUFFERING : {
+                    pbLoad.setVisibility(View.VISIBLE);
+                    break;
+                }
+                case Player.STATE_READY : {
+                    pbLoad.setVisibility(View.INVISIBLE);
+                    break;
+                }
+                case STATE_SEEK_PROCESS : {
+                    pbLoad.setVisibility(View.VISIBLE);
+                    break;
+                }
+                case STATE_IS_LOADING : {
+                    pbLoad.setVisibility(View.VISIBLE);
+                    break;
+                }
+                case STATE_IS_UNLOADING : {
+                    pbLoad.setVisibility(View.INVISIBLE);
+                    break;
+                }
+            }
+        } else {
+            pbLoad.setVisibility(View.INVISIBLE);
+        }
+        handler.postDelayed(this, 1000);
         }
     };
-    private final Runnable uiDurationRunnable = new Runnable() {
-        @Override
-        public void run() {
-            tvTime.setText(dateFormat.format(musicService.getDuration()));
-            handler.postDelayed(this, 1000);
-            sbSong.setMax(musicService.getDuration());
-        }
-    };
 
 
-
+    // Connect Service
     ServiceConnection musicServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
@@ -104,6 +138,7 @@ public class PlayActivity extends AppCompatActivity {
         }
     };
 
+    // Activity lifecycle
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -113,8 +148,7 @@ public class PlayActivity extends AppCompatActivity {
         addEvents();
 
         // Init List Song to ListView and play first song
-        initPlaylist();
-        updateByState();
+        initializeSongs();
     }
 
     @Override
@@ -123,6 +157,9 @@ public class PlayActivity extends AppCompatActivity {
         if (binded) {
             this.unbindService(musicServiceConnection);
             binded = false;
+            Intent intent = new Intent(PlayActivity.this, MusicService.class);
+            stopService(intent);
+            handler.removeCallbacks(uiRefreshRunnable);
         }
     }
 
@@ -131,6 +168,7 @@ public class PlayActivity extends AppCompatActivity {
         super.onStart();
         Intent intent = new Intent(PlayActivity.this, MusicService.class);
         bindService(intent, musicServiceConnection, Context.BIND_AUTO_CREATE);
+        handler.postDelayed(uiRefreshRunnable, 1000);
     }
 
     @Override
@@ -142,7 +180,7 @@ public class PlayActivity extends AppCompatActivity {
         // Get Data Form Intent
         size = getIntent().getIntExtra("SIZE", 10);
         activityOld = getIntent().getStringExtra("ACTIVITY_NAME");
-        singers = getIntent().getParcelableArrayListExtra("SINGERS_CHECKED");
+        mSingers = getIntent().getParcelableArrayListExtra("SINGERS_CHECKED");
 
         // Mapping
         lvSong = findViewById(R.id.lv_song);
@@ -160,8 +198,10 @@ public class PlayActivity extends AppCompatActivity {
         pbLoad.setIndeterminateDrawable(threeBounce);
         pbLoad.setVisibility(View.VISIBLE);
 
+        btnPlay.setImageResource(R.drawable.ic_play);
+
         // Set Adapter List song
-        adapter = new SongAdapter(PlayActivity.this, R.layout.row_item_song, songs);
+        adapter = new SongAdapter(PlayActivity.this, R.layout.row_item_song, mSongs);
         lvSong.setAdapter(adapter);
     }
 
@@ -170,18 +210,15 @@ public class PlayActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 sbSong.setMax(0);
-                updateSongUI(musicService.playSong(i));
+                position = i;
+                bindSongToService(mSongs.get(position));
             }
         });
 
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (musicService.togglePlay()) {
-                    btnPlay.setImageResource(R.drawable.ic_pause);
-                } else {
-                    btnPlay.setImageResource(R.drawable.ic_play);
-                }
+                musicService.togglePlay();
             }
         });
 
@@ -189,14 +226,17 @@ public class PlayActivity extends AppCompatActivity {
         btnNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                updateSongUI(musicService.nextSong());
+                position++;
+                if (position > mSongs.size() - 1) {
+                    position = 0;
+                }
+                bindSongToService(mSongs.get(position));
             }
         });
 
         btnPrev.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                updateSongUI(musicService.prevSong());
             }
         });
 
@@ -208,156 +248,41 @@ public class PlayActivity extends AppCompatActivity {
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-                handler.removeCallbacks(uiCurrentPositionRunnable);
+                handler.removeCallbacks(uiRefreshRunnable);
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 musicService.seekTo(sbSong.getProgress());
-                updateCurrentPosition();
+                handler.postDelayed(uiRefreshRunnable, 1000);
             }
         });
     }
 
-    private void updateSongUI(Song song) {
-        StringBuilder builder = new StringBuilder();
-        ArrayList<Singer> mSingers = song.getSinger();
-        for (int i = 0; i< mSingers.size(); i++) {
-            if (i == mSingers.size() - 1) {
-                builder.append(mSingers.get(i).getName());
-            } else {
-                builder.append(mSingers.get(i).getName()).append(", ");
-            }
-        }
-        tvName.setText(song.getName());
-        tvSinger.setText(builder.toString());
-        updateDuration();
-        updateCurrentPosition();
-    }
-
-    private void updateDuration() {
-        handler.postDelayed(uiDurationRunnable, 1000);
-    }
-
-    private void updateCurrentPosition() {
-        handler.postDelayed(uiCurrentPositionRunnable, 1000);
-    }
-
-    private void updateByState() {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (musicService != null) {
-                    switch (musicService.getPlaybackState()) {
-                        case Player.STATE_ENDED : {
-                            updateSongUI(musicService.nextSong());
-                            break;
-                        }
-                        case Player.STATE_BUFFERING : {
-                            pbLoad.setVisibility(View.VISIBLE);
-                            break;
-                        }
-                        case Player.STATE_READY : {
-                            pbLoad.setVisibility(View.INVISIBLE);
-                            break;
-                        }
-                        case STATE_SEEK_PROCESS : {
-                            pbLoad.setVisibility(View.VISIBLE);
-                            break;
-                        }
-                        case STATE_IS_LOADING : {
-                            pbLoad.setVisibility(View.VISIBLE);
-                            break;
-                        }
-                        case STATE_IS_UNLOADING : {
-                            pbLoad.setVisibility(View.INVISIBLE);
-                            handler.removeCallbacks(uiDurationRunnable);
-                            break;
-                        }
-                    }
-                } else {
-                    pbLoad.setVisibility(View.INVISIBLE);
-                }
-                handler.post(this);
-            }
-        });
+    private void bindSongToService(Song song) {
+        // start service
+        Intent intent = new Intent(this, MusicService.class);
+        intent.putExtra("keySong", (Serializable) song);
+        startService(intent);
     }
 
 
     // Init Playlist on ListView
-    private void initPlaylist() {
+    private void initializeSongs() {
+        adapter.clear();
         if (activityOld.equals("BookSingerActivity")) {
-            fetchSongs();
+            SongViewModel.requestSongFollowSingers(this, mSingers, size, new SongViewModel.VolleyCallback() {
+                @Override
+                public void onSuccess(ArrayList<Song> songs) {
+                    for (Song song : songs) {
+                        mSongs.add(song);
+                        adapter.notifyDataSetChanged();
+                    }
+                    bindSongToService(songs.get(0));
+                }
+            });
         } else {
             Toast.makeText(this, activityOld, Toast.LENGTH_SHORT).show();
         }
     }
-
-    // FetchData
-    private void fetchSongs() {
-        adapter.clear();
-        StringRequest stringRequest = new StringRequest(
-                Request.Method.POST,
-                API_BOOK_SINGER,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONArray JSONsongs = new JSONArray(response);
-                            for (int i = 0; i < JSONsongs.length(); i++) {
-                                JSONObject JSONsong = JSONsongs.getJSONObject(i);
-                                songs.add(createSongByJson(JSONsong));
-                                adapter.notifyDataSetChanged();
-                            }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            Toast.makeText(PlayActivity.this, e.toString(), Toast.LENGTH_SHORT).show();
-                        }
-                        Intent intent = new Intent(PlayActivity.this, MusicService.class);
-                        intent.putExtra("SONGS", songs);
-                        startService(intent);
-                        updateSongUI(songs.get(0));
-                    }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        error.printStackTrace();
-                        Toast.makeText(PlayActivity.this, error.toString(), Toast.LENGTH_SHORT).show();
-                    }
-                }
-        ) {
-            @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<>();
-                params.put("size", String.valueOf(size));
-                for (int i = 0; i < singers.size(); i++) {
-                    params.put("singers[" + i +"]", String.valueOf(singers.get(i).getId()));
-                }
-                return params;
-            }
-        };
-
-        RQSingleton.getInstance(PlayActivity.this).addToRequestQueue(stringRequest);
-    }
-
-    private static Song createSongByJson(JSONObject jsonSong) {
-        try {
-            String songName = jsonSong.getString("name");
-            String songKind = jsonSong.getString("kind");
-            String songURL = jsonSong.getString("url");
-
-            String JSONSingers = jsonSong.getString("singer");
-            List<String> singerList = Arrays.asList(JSONSingers.substring(1, JSONSingers.length() - 1).replaceAll("\"", "").split(","));
-            ArrayList<Singer> songSingers = new ArrayList<>();
-            for (int j = 0; j < singerList.size(); j++) {
-                songSingers.add(new Singer(singerList.get(j)));
-            }
-            return new Song(songName, songSingers, songKind, songURL);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
 }

@@ -1,27 +1,25 @@
 package io.berrycorp.bookmusic.services;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 import android.support.annotation.Nullable;
 import android.widget.Toast;
 
 import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.LoadControl;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
-import com.google.android.exoplayer2.extractor.ExtractorsFactory;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelection;
-import com.google.android.exoplayer2.trackselection.TrackSelector;
-import com.google.android.exoplayer2.upstream.BandwidthMeter;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultAllocator;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
@@ -32,7 +30,7 @@ import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvicto
 import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
 
-import java.util.ArrayList;
+import java.util.Objects;
 
 import io.berrycorp.bookmusic.models.Song;
 
@@ -43,30 +41,22 @@ public class MusicService extends Service {
     private IBinder musicBinder = new MusicBinder();
 
     private SimpleExoPlayer exoPlayer;
-    private BandwidthMeter bandwidthMeter;
-    private ExtractorsFactory extractorsFactory;
-    private TrackSelection.Factory trackSelectionFactory;
-    private TrackSelector trackSelector;
-    private DefaultBandwidthMeter defaultBandwidthMeter;
+    private final DefaultBandwidthMeter DEFAULT_BANDWIDTH_METER = new DefaultBandwidthMeter();
+    private final AdaptiveTrackSelection.Factory ADAPTIVE_TRACK_SELECTION_FACTORY = new AdaptiveTrackSelection.Factory(DEFAULT_BANDWIDTH_METER);
     private DataSource.Factory dataSourceFactory;
     private MediaSource mediaSource;
 
-    private int position = 0;
-    private int duration = 0;
     private int exoState = 0;
 
     public final static int STATE_SEEK_PROCESS = 100;
     public final static int STATE_IS_LOADING = 101;
     public final static int STATE_IS_UNLOADING = 102;
 
-    private static final int BUFFER_SEGMENT_SIZE = 64 * 1024;
-    private static final int BUFFER_SEGMENT_COUNT = 256;
-    private static final int BUFFER_SIZE = BUFFER_SEGMENT_SIZE * BUFFER_SEGMENT_COUNT;
+    private WakeLock mWakeLock;
+    private WifiManager.WifiLock wifiLock;
+    private int duration;
+    private Song songToPlay;
 
-    public static final int NOTIFICATION_ID = 234;
-
-
-    private ArrayList<Song> songs;
 
     @Nullable
     @Override
@@ -77,17 +67,30 @@ public class MusicService extends Service {
 
     @Override
     public void onCreate() {
-        Toast.makeText(this, "create", Toast.LENGTH_SHORT).show();
-        initExoPlayer();
         super.onCreate();
+        Toast.makeText(this, "create", Toast.LENGTH_SHORT).show();
+
+        // Initialize the wake lock
+        final PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        assert powerManager != null;
+        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, getClass().getName());
+        mWakeLock.setReferenceCounted(false);
+
+        wifiLock = ((WifiManager) Objects.requireNonNull(getApplicationContext().getSystemService(Context.WIFI_SERVICE)))
+                .createWifiLock(WifiManager.WIFI_MODE_FULL, "mylock");
+
+        wifiLock.acquire();
+
+        initializeExoPlayer();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Toast.makeText(this, "startCommand", Toast.LENGTH_SHORT).show();
         if (intent != null) {
-            startMusic(intent);
-        } else stopMusic();
+            songToPlay = (Song) intent.getExtras().getSerializable("keySong");
+            playSong(songToPlay);
+        } else stopService();
 
         return START_STICKY;
     }
@@ -106,22 +109,18 @@ public class MusicService extends Service {
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         Toast.makeText(this, "remove", Toast.LENGTH_SHORT).show();
-        stopMusic();
     }
 
     @Override
     public void onDestroy() {
         Toast.makeText(this, "destroy", Toast.LENGTH_SHORT).show();
+        stopService();
         super.onDestroy();
     }
 
-    private void startMusic(Intent intent) {
-        songs = intent.getParcelableArrayListExtra("SONGS");
-        position = 0;
-        playSong(songs.get(position));
-    }
-
-    private void stopMusic() {
+    private void stopService() {
+        mWakeLock.release();
+        wifiLock.release();
         exoPlayer.release();
         stopSelf();
     }
@@ -131,38 +130,9 @@ public class MusicService extends Service {
             exoPlayer.setPlayWhenReady(false);
         }
         Toast.makeText(this, song.getName(), Toast.LENGTH_SHORT).show();
-        mediaSource = new ExtractorMediaSource(Uri.parse(API + song.getUrl()), dataSourceFactory, extractorsFactory, null, null);
-        exoPlayer.prepare(mediaSource);
+        prepareExoPlayer(Uri.parse(API + song.getUrl()));
         exoPlayer.setPlayWhenReady(true);
-    }
 
-    public Song playSong(int pos) {
-        position = pos;
-        Song song = songs.get(pos);
-        playSong(songs.get(pos));
-        return song;
-    }
-
-    public Song nextSong() {
-        position++;
-        if (position > songs.size() - 1) {
-            position = 0;
-        }
-        Song song = songs.get(position);
-        playSong(song);
-        song.setDuration(duration);
-        return song;
-    }
-
-    public Song prevSong() {
-        position--;
-        if (position < 0) {
-            position = songs.size() - 1;
-        }
-        Song song = songs.get(position);
-        playSong(song);
-        song.setDuration(duration);
-        return song;
     }
 
     public boolean togglePlay() {
@@ -180,40 +150,42 @@ public class MusicService extends Service {
     }
 
 
-    public class MusicBinder extends Binder {
-        public MusicService getService() {
-            return MusicService.this;
-        }
+    public int getCurrentPosition() {
+        return (int) exoPlayer.getCurrentPosition();
     }
 
     public int getDuration() {
         return duration;
     }
 
-    public int getCurrentPosition() {
-        return (int) exoPlayer.getCurrentPosition();
-    }
-
     public int getPlaybackState() {
         return exoState;
     }
 
-    private void initExoPlayer() {
-        bandwidthMeter = new DefaultBandwidthMeter();
-        extractorsFactory = new DefaultExtractorsFactory();
+    public boolean isPlaying() {
+        return exoPlayer.getPlayWhenReady();
+    }
 
-        trackSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
+    public Song getSongPlaying() {
+        return songToPlay;
+    }
 
-        trackSelector = new DefaultTrackSelector(trackSelectionFactory);
 
-        defaultBandwidthMeter = new DefaultBandwidthMeter();
-        dataSourceFactory = new DefaultDataSourceFactory(this,
-                Util.getUserAgent(this, "BookMusic"));
+    private void prepareExoPlayer(Uri uri) {
+        mediaSource = new ExtractorMediaSource.Factory(dataSourceFactory).createMediaSource(uri);
+        exoPlayer.prepare(mediaSource);
+    }
+
+
+    private void initializeExoPlayer() {
+        dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "BookMusic"), DEFAULT_BANDWIDTH_METER);
         Cache cache = new SimpleCache(this.getCacheDir(),
                 new LeastRecentlyUsedCacheEvictor(1024 * 1024 * 10));
-        dataSourceFactory = new CacheDataSourceFactory(cache,
-                dataSourceFactory);
-        exoPlayer = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
+        dataSourceFactory = new CacheDataSourceFactory(cache, dataSourceFactory);
+        DefaultLoadControl loadControl = new DefaultLoadControl(new DefaultAllocator(true, 64 * 1024));
+        exoPlayer = ExoPlayerFactory.newSimpleInstance(this,
+                new DefaultTrackSelector(ADAPTIVE_TRACK_SELECTION_FACTORY), loadControl);
+
 
         exoPlayer.addListener(new Player.DefaultEventListener() {
             @Override
@@ -234,8 +206,8 @@ public class MusicService extends Service {
             public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
                 switch (playbackState) {
                     case Player.STATE_READY : {
-                        duration = (int) exoPlayer.getDuration();
                         exoState = Player.STATE_READY;
+                        duration = (int) exoPlayer.getDuration();
                         break;
                     }
                     case Player.STATE_BUFFERING : {
@@ -244,6 +216,7 @@ public class MusicService extends Service {
                     }
                     case Player.STATE_ENDED : {
                         exoState = Player.STATE_ENDED;
+                        mWakeLock.acquire(30000);
                         break;
                     }
                     case Player.STATE_IDLE : {
@@ -253,5 +226,11 @@ public class MusicService extends Service {
                 }
             }
         });
+    }
+
+    public class MusicBinder extends Binder {
+        public MusicService getService() {
+            return MusicService.this;
+        }
     }
 }
