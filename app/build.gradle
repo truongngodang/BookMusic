@@ -18,10 +18,12 @@ android {
     }
     compileOptions {
     }
+    sourceSets { main { res.srcDirs = ['src/main/res', 'src/main/res/anim'] } }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    //noinspection GradleCompatible
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation 'com.android.support:support-v4:27.1.1'
     implementation 'com.android.support.constraint:constraint-layout:1.1.0'
@@ -31,9 +33,9 @@ dependencies {
 
     implementation 'com.android.volley:volley:1.1.0'
 
-    implementation 'com.google.android.exoplayer:exoplayer:2.7.3'
-    implementation 'com.google.android.exoplayer:exoplayer-dash:2.7.3'
-    implementation 'com.google.android.exoplayer:exoplayer-hls:2.7.3'
-    implementation 'com.google.android.exoplayer:exoplayer-smoothstreaming:2.7.3'
-    implementation 'com.github.ybq:Android-SpinKit:1.1.0'
+    implementation 'com.mikhaellopez:circularimageview:3.0.2'
+    implementation 'com.squareup.picasso:picasso:2.71828'
+    implementation 'net.steamcrafted:load-toast:1.0.12'
+
+    implementation 'com.google.code.gson:gson:2.8.4'
 }

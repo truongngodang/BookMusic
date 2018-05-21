@@ -2,11 +2,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layout_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_almost2"
     android:orientation="vertical"
-    android:padding="15dp"
+    android:paddingBottom="15dp"
+    android:paddingLeft="15dp"
+    android:paddingRight="15dp"
+    android:paddingTop="25dp"
     android:weightSum="12"
     tools:context=".PlayActivity">
 
@@ -73,15 +77,6 @@
                 android:text="Unknow"
                 android:textAlignment="center" />
 
-            <com.github.ybq.android.spinkit.SpinKitView
-                android:id="@+id/pb_load"
-                style="@style/SpinKitView.Small.CubeGrid"
-                android:layout_width="40dp"
-                android:layout_height="10dp"
-                android:layout_gravity="center"
-                android:padding="5dp"
-                android:visibility="invisible"
-                app:SpinKit_Color="@color/colorAccent" />
         </LinearLayout>
 
         <LinearLayout

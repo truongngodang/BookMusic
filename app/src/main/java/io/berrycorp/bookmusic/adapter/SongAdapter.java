@@ -7,7 +7,12 @@ import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -42,6 +47,7 @@ public class SongAdapter extends ArrayAdapter<Song> {
             viewHolder.tvName = convertView.findViewById(R.id.tv_name);
             viewHolder.tvSinger = convertView.findViewById(R.id.tv_singer);
             viewHolder.tvKind = convertView.findViewById(R.id.tv_kind);
+            viewHolder.iv_disc = convertView.findViewById(R.id.iv_disc);
             convertView.setTag(viewHolder);
         } else  {
             viewHolder = (ViewHolder) convertView.getTag();
@@ -57,6 +63,21 @@ public class SongAdapter extends ArrayAdapter<Song> {
             }
         }
 
+        RotateAnimation rotateAnimation = new RotateAnimation(0, 360f,
+                Animation.RELATIVE_TO_SELF, 0.5f,
+                Animation.RELATIVE_TO_SELF, 0.5f);
+
+        rotateAnimation.setInterpolator(new LinearInterpolator());
+        rotateAnimation.setDuration(1800);
+        rotateAnimation.setRepeatCount(Animation.INFINITE);
+        if (song.isPlaying()) {
+            viewHolder.iv_disc.setVisibility(View.VISIBLE);
+            viewHolder.iv_disc.setAnimation(rotateAnimation);
+        } else {
+            viewHolder.iv_disc.setAnimation(null);
+            viewHolder.iv_disc.setVisibility(View.INVISIBLE);
+        }
+
         viewHolder.tvName.setText(song.getName());
         viewHolder.tvSinger.setText(singer.toString());
         viewHolder.tvName.setText(song.getName());
@@ -69,6 +90,7 @@ public class SongAdapter extends ArrayAdapter<Song> {
         TextView tvName;
         TextView tvSinger;
         TextView tvKind;
+        ImageView iv_disc;
         ViewHolder() {
 
         }

@@ -5,29 +5,17 @@
     android:layout_height="match_parent"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingBottom="10dp"
+    android:paddingBottom="20dp"
     android:paddingLeft="10dp"
     android:paddingRight="10dp"
-    android:paddingTop="10dp"
-    android:weightSum="1">
-
-    <com.mikhaellopez.circularimageview.CircularImageView
-        android:id="@+id/iv_singer"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        app:civ_border_width="0dp"
-        app:civ_shadow="true"
-        app:civ_shadow_color="#cccccc"
-        app:civ_shadow_radius="10" />
+    android:paddingTop="20dp">
 
     <TextView
         android:id="@+id/tv_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_weight="8"
         android:fontFamily="@font/montserrat_bold"
-        android:paddingLeft="15dp"
-        android:paddingRight="15dp"
         android:text="Đan Nguyên"
         android:textColor="#333"
         android:textSize="16sp"
@@ -37,6 +25,7 @@
         android:id="@+id/iv_checked"
         android:layout_width="20dp"
         android:layout_height="20dp"
+        android:layout_weight="0"
         android:src="@drawable/ic_icon_plus_alt2" />
 
 </LinearLayout>

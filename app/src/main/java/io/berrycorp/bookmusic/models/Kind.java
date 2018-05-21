@@ -8,10 +8,8 @@ import android.widget.Toast;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Response;
-import com.android.volley.RetryPolicy;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
-
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -22,64 +20,41 @@ import java.util.ArrayList;
 
 import io.berrycorp.bookmusic.connect.RQSingleton;
 
-import static io.berrycorp.bookmusic.utils.Constant.API_ALL_SINGER;
+import static io.berrycorp.bookmusic.utils.Constant.API;
+import static io.berrycorp.bookmusic.utils.Constant.API_ALL_KIND;
 
-public class Singer implements Parcelable, Serializable {
-    private Integer id;
+public class Kind implements Parcelable, Serializable {
+    private int id;
     private String name;
-    private String image;
-
     private Boolean isChecked = false;
 
-    public Singer() {
+
+    public Kind() {
     }
 
-    public Singer(String name) {
-        this.name = name;
-    }
-
-    public Singer(Integer id, String name) {
+    public Kind(int id, String name) {
         this.id = id;
         this.name = name;
     }
 
-    public Singer(Integer id, String name, String image) {
-        this.id = id;
-        this.name = name;
-        this.image = image;
-    }
-
-    protected Singer(Parcel in) {
-        if (in.readByte() == 0) {
-            id = null;
-        } else {
-            id = in.readInt();
-        }
+    protected Kind(Parcel in) {
+        id = in.readInt();
         name = in.readString();
-        image = in.readString();
         byte tmpIsChecked = in.readByte();
         isChecked = tmpIsChecked == 0 ? null : tmpIsChecked == 1;
     }
 
-    public static final Creator<Singer> CREATOR = new Creator<Singer>() {
+    public static final Creator<Kind> CREATOR = new Creator<Kind>() {
         @Override
-        public Singer createFromParcel(Parcel in) {
-            return new Singer(in);
+        public Kind createFromParcel(Parcel in) {
+            return new Kind(in);
         }
 
         @Override
-        public Singer[] newArray(int size) {
-            return new Singer[size];
+        public Kind[] newArray(int size) {
+            return new Kind[size];
         }
     };
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
 
     public Boolean getChecked() {
         return isChecked;
@@ -87,6 +62,14 @@ public class Singer implements Parcelable, Serializable {
 
     public void setChecked(Boolean checked) {
         isChecked = checked;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -97,14 +80,6 @@ public class Singer implements Parcelable, Serializable {
         this.name = name;
     }
 
-    public String getImage() {
-        return image;
-    }
-
-    public void setImage(String image) {
-        this.image = image;
-    }
-
     @Override
     public int describeContents() {
         return 0;
@@ -112,40 +87,32 @@ public class Singer implements Parcelable, Serializable {
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        if (id == null) {
-            parcel.writeByte((byte) 0);
-        } else {
-            parcel.writeByte((byte) 1);
-            parcel.writeInt(id);
-        }
+        parcel.writeInt(id);
         parcel.writeString(name);
-        parcel.writeString(image);
         parcel.writeByte((byte) (isChecked == null ? 0 : isChecked ? 1 : 2));
     }
 
-
-    public interface SingerCallback {
-        public void onSuccess(ArrayList<Singer> singers);
+    public interface KindCallback {
+        public void onSuccess(ArrayList<Kind> kinds);
     }
 
-    public static void all(final Context context, final SingerCallback callback) {
+    public static void all(final Context context, final KindCallback callback) {
         StringRequest stringRequest = new StringRequest(
                 Request.Method.GET,
-                API_ALL_SINGER,
+                API_ALL_KIND,
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
                         try {
-                            ArrayList<Singer> singers = new ArrayList<>();
+                            ArrayList<Kind> kinds = new ArrayList<>();
                             JSONArray JSONsongs = new JSONArray(response);
                             for (int i = 0; i < JSONsongs.length(); i++) {
                                 JSONObject JSONsong = JSONsongs.getJSONObject(i);
                                 String name = JSONsong.getString("name");
                                 String id = JSONsong.getString("id");
-                                String image = JSONsong.getString("image");
-                                singers.add(new Singer(Integer.valueOf(id), name, image));
+                                kinds.add(new Kind(Integer.valueOf(id), name));
                             }
-                            callback.onSuccess(singers);
+                            callback.onSuccess(kinds);
                         } catch (JSONException e) {
                             e.printStackTrace();
                             Toast.makeText(context, e.toString(), Toast.LENGTH_SHORT).show();
