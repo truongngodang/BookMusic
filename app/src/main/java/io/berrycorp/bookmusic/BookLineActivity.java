@@ -2,6 +2,7 @@ package io.berrycorp.bookmusic;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -26,12 +27,15 @@ public class BookLineActivity extends AppCompatActivity implements Kind.KindCall
 
     // Controls
     private ListView lvKind;
-    private Button btnPlay;
+    private Button btnPlay, btnBack;
     private EditText etSize;
     private KindAdapter adapter;
 
     // Data
     ArrayList<Kind> mKinds = new ArrayList<>();
+
+    // Load Toast
+    private NiceLoadToast loadToast;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,14 +50,29 @@ public class BookLineActivity extends AppCompatActivity implements Kind.KindCall
 
         lvKind =  findViewById(R.id.lv_kind);
         btnPlay = findViewById(R.id.btn_play);
+        btnBack = findViewById(R.id.btn_back);
         etSize =  findViewById(R.id.et_size);
 
         adapter = new KindAdapter(BookLineActivity.this, R.layout.row_item_kind, mKinds);
         lvKind.setAdapter(adapter);
         Kind.all(BookLineActivity.this, this);
+
+        loadToast = new NiceLoadToast(BookLineActivity.this);
+        loadToast.setText("Đang tạo...");
+        loadToast.setBackgroundColor(Color.rgb(51, 51, 51));
+        loadToast.setTextColor(Color.rgb(242,242,242));
+        loadToast.setProgressColor(Color.rgb(255,102,102));
+        loadToast.setTranslationY(200);
+        loadToast.show();
     }
 
     private void addEvents() {
+        btnBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                finish();
+            }
+        });
         lvKind.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -85,12 +104,6 @@ public class BookLineActivity extends AppCompatActivity implements Kind.KindCall
                 } else if (kindsChecked.size() > size){
                     Toast.makeText(BookLineActivity.this, "Hãy chọn số bài hát lớn hơn số thể loại", Toast.LENGTH_SHORT).show();
                 } else {
-                    final NiceLoadToast loadToast = new NiceLoadToast(BookLineActivity.this);
-                    loadToast.setText("Đang tạo...");
-                    loadToast.setBackgroundColor(Color.rgb(51, 51, 51));
-                    loadToast.setTextColor(Color.rgb(242,242,242));
-                    loadToast.setProgressColor(Color.rgb(255,102,102));
-                    loadToast.setTranslationY(200);
                     loadToast.show();
                     Song.shuffleSongOfKinds(BookLineActivity.this, kindsChecked, size, new Song.OnFetchSongListener() {
                         @Override
@@ -101,13 +114,13 @@ public class BookLineActivity extends AppCompatActivity implements Kind.KindCall
                                     new java.util.TimerTask() {
                                         @Override
                                         public void run() {
-                                            Intent intent = new Intent(BookLineActivity.this, PlayActivity.class);
-                                            intent.putExtra("KEY_SONGS", songs);
+                                            Intent intent = new Intent(BookLineActivity.this, StartActivity.class);
                                             intent.putExtra("KEY_ACTIVITY", Constant.BOOK_LINE_ACTIVITY);
                                             startActivity(intent);
 
                                             Intent intentService = new Intent(BookLineActivity.this, MusicService.class);
                                             intentService.putExtra("KEY_SONGS", songs);
+
                                             startService(intentService);
                                         }
                                     },
@@ -131,6 +144,7 @@ public class BookLineActivity extends AppCompatActivity implements Kind.KindCall
 
     @Override
     public void onSuccess(ArrayList<Kind> kinds) {
+        loadToast.success();
         for (Kind kind : kinds) {
             mKinds.add(kind);
             adapter.notifyDataSetChanged();

@@ -11,27 +11,38 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import net.steamcrafted.loadtoast.LoadToast;
+import com.plumillonforge.android.chipview.Chip;
+import com.plumillonforge.android.chipview.ChipView;
 
 import java.util.ArrayList;
 
 import io.berrycorp.bookmusic.adapter.SingerAdapter;
+import io.berrycorp.bookmusic.adapter.SingerChipAdapter;
 import io.berrycorp.bookmusic.models.Singer;
 import io.berrycorp.bookmusic.models.Song;
 import io.berrycorp.bookmusic.services.MusicService;
 import io.berrycorp.bookmusic.utils.Constant;
 import io.berrycorp.bookmusic.utils.NiceLoadToast;
 
-public class BookSingerActivity extends AppCompatActivity implements Singer.SingerCallback {
+public class BookSingerActivity extends AppCompatActivity implements Singer.SingerCallback, SingerChipAdapter.OnRemoveChipListener {
 
     // Controls
     private ListView lvSinger;
-    private Button btnPlay;
+    private Button btnPlay, btnBack;
     private EditText etSize;
     private SingerAdapter adapter;
 
+    private ChipView cvChecked;
+
+
     // Data
     private ArrayList<Singer> mSingers = new ArrayList<>();
+    private ArrayList<Chip> chipChecked = new ArrayList<>();
+
+    // Load Toast
+    private NiceLoadToast loadToast;
+
+    private SingerChipAdapter chipAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,23 +56,49 @@ public class BookSingerActivity extends AppCompatActivity implements Singer.Sing
 
     private void addControls() {
 
-        lvSinger = (ListView) findViewById(R.id.lv_singer);
-        btnPlay = (Button) findViewById(R.id.btn_play);
-        etSize = (EditText) findViewById(R.id.et_size);
+        lvSinger =  findViewById(R.id.lv_singer);
+        btnPlay = findViewById(R.id.btn_play);
+        btnBack = findViewById(R.id.btn_back);
+        etSize = findViewById(R.id.et_size);
+        cvChecked =  findViewById(R.id.cv_checked);
 
         adapter = new SingerAdapter(BookSingerActivity.this, R.layout.row_item_singer, mSingers);
         lvSinger.setAdapter(adapter);
         Singer.all(BookSingerActivity.this, this);
+
+        loadToast = new NiceLoadToast(BookSingerActivity.this);
+        loadToast.setText("Đang tạo...");
+        loadToast.setBackgroundColor(Color.rgb(51, 51, 51));
+        loadToast.setTextColor(Color.rgb(242, 242, 242));
+        loadToast.setProgressColor(Color.rgb(255, 102, 102));
+        loadToast.setTranslationY(200);
+        loadToast.show();
+
+        chipAdapter = new SingerChipAdapter(this);
+        chipAdapter.setOnRemoveChipListener(this);
+        cvChecked.setAdapter(chipAdapter);
     }
 
     private void addEvents() {
+
+        btnBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                finish();
+            }
+        });
+
         lvSinger.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 Singer singer = mSingers.get(i);
                 if (singer.getChecked()) {
                     singer.setChecked(false);
+                    chipChecked.remove(singer);
+                    cvChecked.setChipList(chipChecked);
                 } else {
+                    chipChecked.add(singer);
+                    cvChecked.setChipList(chipChecked);
                     singer.setChecked(true);
                 }
                 adapter.updateState(mSingers);
@@ -86,12 +123,6 @@ public class BookSingerActivity extends AppCompatActivity implements Singer.Sing
                 } else if (singersChecked.size() > size){
                     Toast.makeText(BookSingerActivity.this, "Hãy chọn số bài hát lớn hơn số ca sỹ", Toast.LENGTH_SHORT).show();
                 } else {
-                    final NiceLoadToast loadToast = new NiceLoadToast(BookSingerActivity.this);
-                    loadToast.setText("Đang tạo...");
-                    loadToast.setBackgroundColor(Color.rgb(51, 51, 51));
-                    loadToast.setTextColor(Color.rgb(242, 242, 242));
-                    loadToast.setProgressColor(Color.rgb(255, 102, 102));
-                    loadToast.setTranslationY(200);
                     loadToast.show();
 
                     Song.shuffleSongOfSingers(BookSingerActivity.this, singersChecked, size, new Song.OnFetchSongListener() {
@@ -103,8 +134,7 @@ public class BookSingerActivity extends AppCompatActivity implements Singer.Sing
                                     new java.util.TimerTask() {
                                         @Override
                                         public void run() {
-                                            Intent intent = new Intent(BookSingerActivity.this, PlayActivity.class);
-                                            intent.putExtra("KEY_SONGS", songs);
+                                            Intent intent = new Intent(BookSingerActivity.this, StartActivity.class);
                                             intent.putExtra("KEY_ACTIVITY", Constant.BOOK_SINGER_ACTIVITY);
                                             startActivity(intent);
 
@@ -132,9 +162,20 @@ public class BookSingerActivity extends AppCompatActivity implements Singer.Sing
 
     @Override
     public void onSuccess(ArrayList<Singer> singers) {
+        loadToast.success();
         for (Singer singer : singers) {
             mSingers.add(singer);
             adapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    public void removed(Singer singer) {
+        for(Singer item : mSingers) {
+            if (item.getId().equals(singer.getId())) {
+                item.setChecked(false);
+                adapter.updateState(mSingers);
+            }
         }
     }
 }

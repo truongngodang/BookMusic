@@ -1,145 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    tools:ignore="ScrollViewCount"
-    tools:context=".StartActivity">
-    <LinearLayout
+    android:layout_width="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".StartActivity"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:id="@+id/fl_body"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <android.support.design.widget.BottomNavigationView
+        android:id="@+id/bnv_menu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#fff"
-        android:orientation="vertical"
-        android:padding="15dp">
+        android:layout_gravity="bottom"
+        android:background="#f2f2f2"
+        app:itemIconTint="@drawable/bnv_color"
+        app:itemTextColor="@drawable/bnv_color"
+        app:menu="@menu/bnv_menu"/>
+</LinearLayout>
 
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:layout_marginLeft="5dp"
-            android:layout_marginRight="5dp"
-            android:background="@drawable/bg_white_radius"
-            android:gravity="center_horizontal"
-            android:orientation="horizontal"
-            android:paddingBottom="30dp"
-            android:paddingLeft="20dp"
-            android:paddingRight="20dp"
-            android:paddingTop="30dp">
-
-            <TextView
-                android:id="@+id/textView7"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/montserrat_bold"
-                android:text="BOOK"
-                android:textAlignment="center"
-                android:textColor="@color/colorPrimary"
-                android:textSize="39sp" />
-
-            <TextView
-                android:id="@+id/textView8"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/open_sans"
-                android:text="music"
-                android:textColor="#333"
-                android:textSize="30sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/card_book_single"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_almost"
-            android:orientation="vertical"
-            android:paddingBottom="30dp"
-            android:paddingLeft="30dp"
-            android:paddingRight="30dp"
-            android:paddingTop="25dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="0dp"
-                android:fontFamily="@font/montserrat_bold"
-                android:text="Book Singer"
-                android:textColor="#000"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/open_sans"
-                android:text="Trộn nhạc theo ca sỹ bạn thích"
-                android:textColor="#333"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/card_music_line"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_friday"
-            android:orientation="vertical"
-            android:paddingBottom="30dp"
-            android:paddingLeft="30dp"
-            android:paddingRight="30dp"
-            android:paddingTop="25dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="0dp"
-                android:fontFamily="@font/montserrat_bold"
-                android:text="Music Line"
-                android:textColor="#000"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/open_sans"
-                android:text="Trộn nhạc theo dòng nhạc"
-                android:textColor="#333"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/card_player"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_friday"
-            android:orientation="vertical"
-            android:paddingBottom="30dp"
-            android:paddingLeft="30dp"
-            android:paddingRight="30dp"
-            android:paddingTop="25dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="0dp"
-                android:fontFamily="@font/montserrat_bold"
-                android:text="Playing"
-                android:textColor="#000"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/open_sans"
-                android:text="Bài hát đang phát"
-                android:textColor="#333"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-    </LinearLayout>
-</ScrollView>

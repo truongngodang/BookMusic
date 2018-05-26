@@ -31,33 +31,6 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-
-            android:orientation="horizontal"
-            android:weightSum="12">
-
-            <TextView
-                android:id="@+id/textView2"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="3"
-                android:fontFamily="@font/open_sans"
-                android:text="Thể loại:"
-                android:textColor="#666"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/tv_kind"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="9"
-                android:fontFamily="@font/open_sans"
-                android:text="Bolero"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
             android:layout_marginBottom="5dp"
             android:orientation="horizontal"
             android:weightSum="12">
@@ -66,7 +39,7 @@
                 android:id="@+id/textView"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="3"
+                android:layout_weight="4"
                 android:fontFamily="@font/open_sans"
                 android:text="Ca sỹ: "
                 android:textColor="#666"
@@ -76,11 +49,38 @@
                 android:id="@+id/tv_singer"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="9"
+                android:layout_weight="8"
                 android:fontFamily="@font/open_sans"
                 android:text="Đan Nguyên"
                 android:textSize="14sp" />
 
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+
+            android:orientation="horizontal"
+            android:weightSum="12">
+
+            <TextView
+                android:id="@+id/textView2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="4"
+                android:fontFamily="@font/open_sans"
+                android:text="Thể loại:"
+                android:textColor="#666"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tv_kind"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="8"
+                android:fontFamily="@font/open_sans"
+                android:text="Bolero"
+                android:textSize="14sp" />
         </LinearLayout>
 
     </LinearLayout>

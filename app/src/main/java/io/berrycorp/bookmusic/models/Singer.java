@@ -11,6 +11,7 @@ import com.android.volley.Response;
 import com.android.volley.RetryPolicy;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+import com.plumillonforge.android.chipview.Chip;
 
 
 import org.json.JSONArray;
@@ -24,7 +25,7 @@ import io.berrycorp.bookmusic.connect.RQSingleton;
 
 import static io.berrycorp.bookmusic.utils.Constant.API_ALL_SINGER;
 
-public class Singer implements Parcelable, Serializable {
+public class Singer implements Parcelable, Serializable, Chip {
     private Integer id;
     private String name;
     private String image;
@@ -123,6 +124,11 @@ public class Singer implements Parcelable, Serializable {
         parcel.writeByte((byte) (isChecked == null ? 0 : isChecked ? 1 : 2));
     }
 
+    @Override
+    public String getText() {
+        return this.name;
+    }
+
 
     public interface SingerCallback {
         public void onSuccess(ArrayList<Singer> singers);
@@ -142,7 +148,7 @@ public class Singer implements Parcelable, Serializable {
                                 JSONObject JSONsong = JSONsongs.getJSONObject(i);
                                 String name = JSONsong.getString("name");
                                 String id = JSONsong.getString("id");
-                                String image = JSONsong.getString("image");
+                                String image = JSONsong.getString("image_path");
                                 singers.add(new Singer(Integer.valueOf(id), name, image));
                             }
                             callback.onSuccess(singers);

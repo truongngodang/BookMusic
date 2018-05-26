@@ -188,7 +188,7 @@ public class Song implements Serializable, Parcelable {
                 Map<String, String> params = new HashMap<>();
                 params.put("size", String.valueOf(size));
                 for (int i = 0; i < singers.size(); i++) {
-                    params.put("singers[" + i +"]", String.valueOf(singers.get(i).getId()));
+                    params.put("singer-ids[" + i +"]", String.valueOf(singers.get(i).getId()));
                 }
                 return params;
             }
@@ -233,7 +233,7 @@ public class Song implements Serializable, Parcelable {
                 Map<String, String> params = new HashMap<>();
                 params.put("size", String.valueOf(size));
                 for (int i = 0; i < kinds.size(); i++) {
-                    params.put("kinds[" + i +"]", String.valueOf(kinds.get(i).getId()));
+                    params.put("kind-ids[" + i +"]", String.valueOf(kinds.get(i).getId()));
                 }
                 return params;
             }
@@ -247,10 +247,10 @@ public class Song implements Serializable, Parcelable {
     private static Song parseSong(JSONObject jsonSong) {
         try {
             String songName = jsonSong.getString("name");
-            String songKind = jsonSong.getString("kind");
+            String songKind = jsonSong.getString("kind_append");
             String songURL = jsonSong.getString("url");
 
-            JSONArray JSONSingers = jsonSong.getJSONArray("singer");
+            JSONArray JSONSingers = jsonSong.getJSONArray("singers_append");
             Type listType = new TypeToken<List<Singer>>() {}.getType();
             ArrayList<Singer> songSingers = new Gson().fromJson(String.valueOf(JSONSingers), listType);
             return new Song(songName, songSingers, songKind, songURL);

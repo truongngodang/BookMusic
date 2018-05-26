@@ -20,12 +20,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".BookSingerActivity" />
-        <activity android:name=".PlayActivity" />
-
+        <activity android:name=".BookLineActivity"/>
         <service android:name=".services.MusicService" />
-
-        <activity android:name=".BookLineActivity"
-            android:windowSoftInputMode="adjustResize"/>
     </application>
 
 </manifest>

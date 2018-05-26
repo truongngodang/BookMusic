@@ -7,6 +7,7 @@
     android:fillViewport="true"
     tools:ignore="ScrollViewCount"
     tools:context=".BookLineActivity">
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -14,7 +15,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:orientation="vertical"
-        android:paddingBottom="15dp"
+        android:paddingBottom="30dp"
         android:paddingLeft="15dp"
         android:paddingRight="15dp"
         android:paddingTop="15dp"
@@ -24,7 +25,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_marginBottom="10dp"
-            android:layout_weight="9"
+            android:layout_weight="12"
             android:background="@drawable/bg_white_radius"
             android:orientation="vertical">
 
@@ -38,7 +39,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="80dp"
             android:layout_marginBottom="20dp"
             android:background="@drawable/bg_white_radius"
             android:gravity="center_vertical"
@@ -74,21 +75,38 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="3"
-            android:gravity="top"
+            android:layout_height="50dp"
+            android:gravity="top|center_horizontal"
             android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_back"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:layout_marginRight="5dp"
+                android:background="@drawable/bg_white_radius"
+                android:fontFamily="@font/montserrat_bold"
+                android:paddingLeft="30dp"
+                android:paddingRight="30dp"
+                android:text="Back"
+                android:textColor="#999"
+                android:textSize="18sp" />
 
             <Button
                 android:id="@+id/btn_play"
                 style="?android:attr/borderlessButtonStyle"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="50dp"
-                android:background="@drawable/btn_simple"
+                android:layout_marginLeft="5dp"
+                android:background="@drawable/bg_white_radius"
                 android:fontFamily="@font/montserrat_bold"
-                android:text="Chơi"
-                android:textColor="#fff"
+                android:paddingLeft="30dp"
+                android:paddingRight="30dp"
+                android:text="PLAY"
+                android:textColor="@color/colorPrimary"
                 android:textSize="18sp" />
+
         </LinearLayout>
 
     </LinearLayout>
